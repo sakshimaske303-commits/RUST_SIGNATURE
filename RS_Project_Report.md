@@ -1,60 +1,97 @@
-# Project Report
+# Rust Signature: iron-oxide mapping at Noamundi with EO-1 Hyperion
 
-## Rust Signature: Spectral Discrimination of Mine Tailings and Waste Rock at Noamundi Using EO-1 Hyperion
+A short case study. I take one EO-1 Hyperion scene (16 April 2011) over the Noamundi iron-ore mine in Jharkhand, India, and ask a simple question: does the ferric-iron absorption near 900 nm show up where the mine is?
 
-### Overview
+![poster](outputs/rust_signature_poster.png)
 
-This case study uses an EO-1 Hyperion hyperspectral scene over the Noamundi iron ore mine (West Singhbhum, Jharkhand) to spectrally separate iron-oxide-rich waste rock and tailings from vegetated fringe and mixed bare surface, using continuum-removed diagnostic absorption features rather than simple band ratios. Hyperion's 220+ narrow spectral bands can resolve mineralogically specific absorption troughs — a ferric-iron feature centered near 870nm and an Al/Fe-OH clay feature near 2200nm — that collapse into a handful of broad, indistinguishable bands on multispectral sensors like Landsat or Sentinel-2. That resolution is the entire reason to reach for hyperspectral data here instead of the multispectral imagery used throughout the rest of this portfolio.
+## What I did
 
-Hyperspectral work at Noamundi and the surrounding Kiriburu–Meghahataburu/Bailadila iron ore belt splits into two threads right now, and nobody's merged them. One maps ore grade and mineral chemistry directly — spectral unmixing to evaluate iron ore grades, characterizing hematite mineral classes. The other tracks what the mining belt is doing to the surrounding Saranda forest — canopy health and tree-species diversity, using the same sensor. Neither one has actually spectrally characterized the tailings, waste-rock dumps, or mine-associated water bodies sitting physically between these two studied surfaces — even though the same sensor type has been used for exactly this purpose elsewhere: Hyperion and HyMap data mapped pyrite mine waste and acid-mine-drainage-affected water in the Iberian Pyrite Belt, Spain, using this same class of continuum-removed absorption analysis. I want to be upfront about scope here — this is a case-study/map-making project, not a full research paper. The goal is a defensible, portfolio-ready spectral map that fills one specific, citable gap, not a publication-length study.
+1. **Data.** Hyperion scene of 16 April 2011 from Google Earth Engine (`EO1/HYPERION`), clipped to a 3 km radius around the workings (`scripts/00_gee_export.js`). The scene edge cuts off the eastern part of the circle, so 25.65 km² is analysed.
+2. **Radiance.** Earth Engine stores Hyperion as scaled integers, so I divide by 40 (VNIR, B008–B057) and by 80 (SWIR, B077–B224) to get radiance.
+3. **Band clean-up.** I drop the water-vapour and CO₂ bands (1115–1145, 1340–1470, 1790–1970, 1995–2020 nm), the SWIR bands that repeat the end of the VNIR range, and bands that are empty or drop out. 157 of 198 bands remain. Vertical detector stripes are evened out by matching each column's mean and spread to the band's (moment matching).
+4. **Relative reflectance.** I use IARR (Kruse, 1988): each pixel's radiance divided by the scene-mean radiance in that band. It is simple and needs no atmospheric model, but the result is relative to this scene.
+5. **Indices.**
+   - NDVI from red (640–680 nm) and NIR (820–880 nm) radiance.
+   - Ferric-iron band depth: 1 − centre / continuum. The centre is 860–910 nm and the straight-line continuum runs between 740–780 nm and 990–1030 nm.
+6. **Classes.**
+   - Vegetation: NDVI above an Otsu threshold.
+   - Bare ground with iron-oxide absorption: ferric band depth > 0, i.e. a dip deeper than the scene average.
+   - Bare ground without clear absorption: the rest.
+7. **Check against the mine.** I compare the classes with the three working areas listed by corner coordinates in the Indian Bureau of Mines inspection report for the mine: Hill 3&4, Hill 5&6 and the Western Pit.
 
-### Objectives
+I run the whole analysis with one command, `python run_all.py`, on the exported tif in this folder.
 
-1. Confirm Hyperion archive coverage of Noamundi via Google Earth Engine's `EO1/HYPERION` collection and export a clipped, quality-checked scene for analysis — I didn't want to assume a published acquisition was still retrievable and find out halfway through.
-2. Build my own signal-based bad-band mask (water-vapor absorption windows, low-SNR bands) instead of copying a hardcoded band list from a paper, and check the wavelength assignment against Hyperion's known VNIR/SWIR instrument seam and atmospheric absorption structure.
-3. Compute continuum-removed diagnostic absorption indices — a ferric-iron band depth (~870nm) and an Al/Fe-OH band depth (~2200nm) — instead of simple two-band ratios, so the indices actually isolate mineralogically diagnostic features and aren't just a generic brightness proxy.
-4. Run unsupervised classification on shape-normalized (per-pixel) spectra so surface material composition gets separated from topographic/illumination brightness, then cross-check the resulting classes against an independently built true-color/false-color browse composite of the same scene.
-5. Produce a labeled surface classification distinguishing iron-oxide waste rock/tailings, vegetated/forest fringe, and mixed bare surface — and flag openly where mine-water bodies couldn't be confidently separated at this resolution, instead of claiming a class the data can't actually support.
-6. Package the result as a portfolio-ready interactive map (satellite basemap, classed legend) that addresses the specific gap at this site: nobody had spectrally characterized the tailings, waste-rock, and mine-water surfaces here before.
+## Results
 
-### Related Work & Citations
+| | |
+|---|---|
+| Area analysed | 25.65 km² |
+| Vegetation | 18.32 km² |
+| Bare ground with iron-oxide absorption | 6.42 km² |
+| Bare ground without clear iron-oxide absorption | 0.91 km² |
+| Pixels with iron-oxide absorption, inside the mine working areas | 68% |
+| Pixels with iron-oxide absorption, rest of the area | 23% |
+| Median ferric band depth: vegetation / bare in working areas / bare elsewhere | −0.019 / 0.048 / 0.049 |
 
-Hyperspectral work at Noamundi and the neighboring Kiriburu–Meghahataburu/Bailadila iron ore belt falls into two established threads. The first maps ore grade and mineral chemistry directly — linear spectral unmixing of Hyperion data to estimate iron ore grades at Noamundi (Magendran & Sanjeevi), a companion spectral-unmixing study at Kiriburu and Meghahataburu, and hematite ore-class characterization at Bailadila (Shaik et al., 2021). The second tracks the mining belt's effect on the surrounding Saranda forest — canopy health and tree-species diversity assessed with Hyperion and Landsat data (Kayet et al., 2020). Neither thread has spectrally characterized the tailings, waste-rock dumps, or mine-associated water bodies that sit physically between these two studied surfaces, despite the same sensor type being used for exactly this purpose elsewhere: Hyperion and HyMap data were used to map pyrite mine waste and acid-mine-drainage-affected water in the Iberian Pyrite Belt, Spain, using the same class of continuum-removed absorption-feature analysis applied here (Riaza et al., 2012).
+- The bare ground shows a clear absorption trough centred near 880–900 nm, the shape expected for ferric iron (hematite, goethite). Vegetation shows none.
+- The mine working areas are about three times as likely as the rest of the area to fall in the iron-oxide class.
+- Inside bare ground, the working areas look the same as the other bare ground (median depth 0.048 vs 0.049). The pits, benches and waste dumps around them all carry the iron signal, so at 30 m the three listed pits cannot be told apart from the rest of the mining complex.
 
-**References**
+## Limits
 
-1. Riaza, A., Buzzi, J., García-Meléndez, E., Vázquez, I., Bellido, E., Carrère, V., & Müller, A. (2012). Pyrite mine waste and water mapping using Hymap and Hyperion hyperspectral data. *Environmental Earth Sciences*, 66(7), 1957–1971. https://doi.org/10.1007/s12665-011-1422-0
-2. Shaik, I., Begum, S. K., Nagamani, P. V., & Kayet, N. (2021). Characterization and mapping of hematite ore mineral classes using hyperspectral remote sensing technique: a case study from Bailadila iron ore mining region. *SN Applied Sciences*, 3, Article 182. https://doi.org/10.1007/s42452-021-04213-3
-3. Kayet, N., Pathak, K., Chakrabarty, A., Kumar, S., Singh, C. P., & Chowdary, V. M. (2020). Assessment of mining activities on tree species and its diversity in hilltop mining areas using Hyperion and Landsat data. *Environmental Science and Pollution Research*, 27(34), 42750–42766. https://doi.org/10.1007/s11356-020-09795-w
-4. Magendran, T., & Sanjeevi, S. Hyperion image analysis and linear spectral unmixing to evaluate the grades of iron ores in parts of Noamundi, Eastern India. *International Journal of Applied Earth Observation and Geoinformation*. (Indexed via ScienceDirect, PII S0303-2434(13)00103-7 — confirm exact volume/page before final citation formatting.)
-5. Hyperspectral Image Analysis for Iron Mineral Exploration and Spectral Unmixing Study in Kiriburu and Meghahataburu Mining Areas, West Singbhum, Jharkhand. (Indexed via ResearchGate — confirm exact author order/volume/page before final citation formatting.)
+- One date (2011), 30 m pixels, no field or lab spectra. The class is "bare ground with an iron-oxide absorption", not an ore-grade map.
+- IARR is relative to the scene mean, and this scene is mostly forest. So "deeper than average" partly means "less vegetated". Ferric depth and NDVI correlate at r = −0.80.
+- The working areas are rectangles built from corner coordinates, so their edges are approximate.
+- Hyperion's SWIR signal is noisy, so I do not use the 2200 nm clay feature for any class.
 
----
+## Policy context: a monitoring condition
 
-# Development Log
+- **The clearance asks for this measurement.** The mine's environmental clearance of 10 June 2013 (J-11015/104/2011-IA.II(M), specific condition 33) requires "digital processing of the entire lease area using remote sensing technique" once in three years. The clearance of 6 September 2021 asks for a land use and land cover map of the lease once in five years. In the operator's compliance report for October 2025 to March 2026, the reply is that a private agency prepares the map; no dates, resolution or results are given.
+- **A record the regulated firm produces.** The lease covers 1,160.06 ha, of which 762.42 ha is forest land (same report). The map that shows whether this land is worked and reclaimed as approved is commissioned by the operator and summarised in its own report. That is self-reported compliance, and the regulator has to verify what the firm reports.
+- **What a public check adds.** Free archive imagery, code anyone can rerun, and a benchmark taken from the regulator's own inspection report. This study shows that such a check can confirm where the ground is open. At 30 m it cannot say which pit is active, or whether a dump has been reclaimed to the standard the closure plan sets.
+- **A baseline before the condition.** The scene is from April 2011, two years before the 2013 condition. The same measure on a recent image would turn a footprint into a change, which is what a monitoring condition is meant to track.
 
-**Data & tools:** EO-1 Hyperion (NASA/USGS), scene 16 Apr 2011, WRS Path/Row 140/45, sourced via Google Earth Engine's `EO1/HYPERION` collection; Python (rasterio, scikit-learn, matplotlib) for the analysis; Folium for the final interactive map.
+## The footprint at the state's own forest price
 
-**Step 1 — First I had to check the scene actually exists.**
-Two published papers already pointed at Noamundi as a confirmed Hyperion site, but I wasn't going to build a whole case study on a scene I hadn't pulled myself. Wrote a short script against `EO1/HYPERION`, filtered to Noamundi's coordinates and the 16 April 2011 window, ran it in the Earth Engine Code Editor. One scene came back. That's what let me actually start the day — if it had come back empty, Bailadila was the backup site.
+India charges a one-off Net Present Value (NPV) for each hectare of forest land diverted to non-forest use; it is paid into the compensatory afforestation fund. Applied to the measured bare ground, the schedule gives an order of magnitude, not a bill.
 
-**Step 2 — Export and first look.**
-Clipped a 3km buffer around the mine point, exported to Drive as a GeoTIFF, pulled it down locally. 198 bands, 30m pixels, roughly a 6km box. First thing I checked wasn't the spectral content, it was whether the export was even real data and not an empty or corrupt file. It was fine — every band had a sensible dynamic range.
+| NPV rate used | Rs lakh per ha | 7.33 km² (733 ha), Rs crore |
+|---|---|---|
+| Lowest: eco-class IV, open forest | 6.70 | 49.1 |
+| Highest: eco-class I, very dense forest | 15.96 | 117.0 |
 
-**Step 3 — Band quality, done properly instead of guessing.**
-I could have just pasted in a bad-band list I half-remembered from some paper. Didn't do that. Computed the per-band mean signal myself and flagged anything sitting inside Hyperion's known water-vapor absorption windows (~1350–1490nm, ~1780–1970nm), plus anything in the bottom signal percentile. 35 of 198 bands got dropped this way. Plotted the surviving mean spectrum afterward and it had exactly the shape a real Hyperion radiance curve should — the VNIR/SWIR instrument seam dip around 900nm, both water-vapor troughs sitting right where I'd flagged them. That match is what actually convinced me the data was clean before I touched any indices.
+Rates after the revision reported in January 2022, which raised the earlier schedule by a factor of 1.53.
 
-**Step 4 — The clustering mistake that almost went into the final map.**
-First K-means pass on the cleaned bands looked fine at a glance — six clusters, clean-looking split. Then I plotted each cluster's mean spectrum and realized all six were the same curve at six different brightness levels. I'd normalized each band's range across the image, but never removed each pixel's own overall brightness — so the model was clustering by how sunlit a patch of ground happened to be, not by what it was actually made of. Classic shadow/topography contamination, not a real material signal. Fixed it by dividing each pixel's spectrum by its own mean before clustering, which strips illumination out and leaves only spectral shape. Re-ran it and this time the clusters actually separated on the indices, not on brightness.
+- **What the number is.** A national schedule set by forest class and canopy density. It is a transferred value: a hectare of sal forest in West Singhbhum is charged the same as any other hectare of that class and density, whatever the people around it use it for.
+- **What it is not.** A figure for this lease. The 3 km window is not the lease boundary, which is not public as a map, and part of the bare ground was diverted long before 2011 or was never forest.
+- **What would value it properly.** A site-specific value for the forest the mine replaced: a stated-preference survey, such as a choice experiment with the households that use the forest, for the services the national schedule averages away. The satellite measure supplies the quantity; the price has to come from valuation, and that is where most of the uncertainty in the range sits.
 
-**Step 5 — Getting the iron index right.**
-First attempt at an iron-oxide index was the obvious two-band ratio (NIR/red) — what most people reach for first, and what I reached for first too. Problem is that's not how the ferric-iron absorption feature actually behaves. It's a trough centered around 860–900nm, not something a two-point ratio can capture properly. Redid it as a continuum-removed band depth, the same way I was already handling the 2200nm clay/jarosite feature. That version is what made it into the final classification.
+## Reading the indicator as a variable
 
-**Step 6 — Checking the classification against something real.**
-Before I trusted the classified map, I built a true-color and false-color browse composite from the same data and put it side by side with the classification. The dark branching drainage channel visible in the true-color image lines up almost exactly with the "vegetated" class the classification came up with — I never told K-means about that channel, it fell out of the spectral shape completely on its own. That's the kind of agreement that makes a result actually trustworthy, not just plausible-looking.
+If the iron-oxide class were used as a regressor, for example mining disturbance in a study of forest livelihoods, the structure of its error would matter more than its accuracy.
 
-**Step 7 — What I chose not to force.**
-The water index came back too flat across all six clusters to confidently call any of them "mine water." No atmospheric correction, 30m pixels, and the settling ponds here are probably sub-pixel anyway. I could have just picked the lowest-water-index cluster and labeled it water — didn't do that. Left it as an open flag in the map's own legend instead. A map that admits what it couldn't resolve is worth more to me than one that pretends it resolved something it didn't.
+- **The error is not classical.** A misclassified 0/1 indicator cannot have an error independent of the truth: a disturbed pixel can only be missed and an undisturbed one only falsely flagged (Aigner, 1973). Here the error also moves with vegetation cover: band depth and NDVI correlate at r = −0.80.
+- **The 23% is not a false-positive rate.** Much of the ground outside the three boxes is real mine ground that the inspection report does not list, so the benchmark measures agreement, not error.
+- **So the bias has no safe direction.** Classical error pulls an estimate toward zero. If the error is tied to vegetation, and vegetation also affects the outcome being studied, the bias can go either way.
+- **What would fix it.** A validation sample with known status, such as surveyed workings, to estimate the misclassification rates and correct for them. Jain (2020) makes the same point for satellite data in causal studies.
 
-**Step 8 — Where this actually lands.**
-Iron-oxide waste rock/tailings came out to roughly 18 sq km of the AOI, vegetated fringe about 4.7 sq km, mixed bare surface about 5.5 sq km. That number is the whole point of this case study — the Hyperion literature at this exact site has mapped ore grade, and separately mapped forest health, but nobody had actually put a number on how much of the ground here is spectrally waste rock versus something else. Now there is one.
+## Files
+
+- `scripts/00_gee_export.js`: Earth Engine export
+- `scripts/01_prepare.py`: radiance, band clean-up, destriping, IARR, band QA plot
+- `scripts/02_indices_and_classes.py`: NDVI, ferric depth, classes, working-area check, `outputs/summary.json`
+- `scripts/03_figures_and_map.py`: maps, poster, interactive map (`outputs/noamundi_classification_map.html`) and plots
+
+## References
+
+- Aigner, D. J. (1973). Regression with a binary independent variable subject to errors of observation. *Journal of Econometrics*, 1(1), 49–59.
+- Clark, R. N., & Roush, T. L. (1984). Reflectance spectroscopy: Quantitative analysis techniques for remote sensing applications. *Journal of Geophysical Research*, 89(B7), 6329–6340.
+- Gadallah, F. L., Csillag, F., & Smith, E. J. M. (2000). Destriping multisensor imagery with moment matching. *International Journal of Remote Sensing*, 21(12), 2505–2511.
+- Hunt, G. R. (1977). Spectral signatures of particulate minerals in the visible and near infrared. *Geophysics*, 42(3), 501–513.
+- Jain, M. (2020). The benefits and pitfalls of using satellite data for causal inference. *Review of Environmental Economics and Policy*, 14(1), 157–169.
+- Kruse, F. A. (1988). Use of airborne imaging spectrometer data to map minerals associated with hydrothermally altered rocks in the northern Grapevine Mountains, Nevada and California. *Remote Sensing of Environment*, 24(1), 31–51.
+- Magendran, T., & Sanjeevi, S. (2014). Hyperion image analysis and linear spectral unmixing to evaluate the grades of iron ores in parts of Noamundi, Eastern India. *International Journal of Applied Earth Observation and Geoinformation*, 26, 413–426.
+- Otsu, N. (1979). A threshold selection method from gray-level histograms. *IEEE Transactions on Systems, Man, and Cybernetics*, 9(1), 62–66.
+- MoEF&CC effects upward revision in NPV, with certain exemptions. (2022, January 21). *The Hitavada*.
+- Pearlman, J. S., Barry, P. S., Segal, C. C., Shepanski, J., Beiso, D., & Carman, S. L. (2003). Hyperion, a space-based imaging spectrometer. *IEEE Transactions on Geoscience and Remote Sensing*, 41(6), 1160–1173.
+- Tata Steel. (2026). *Half-yearly environmental clearance compliance report, Noamundi Iron Mine, October 2025 to March 2026*.
