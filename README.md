@@ -1,6 +1,6 @@
 # Rust Signature: iron-oxide mapping at Noamundi with EO-1 Hyperion
 
-A short case study. I take one EO-1 Hyperion scene (16 April 2011) over the Noamundi iron-ore mine in Jharkhand, India, and ask a simple question: does the ferric-iron absorption near 900 nm show up where the mine is?
+A short case study. I take one EO-1 Hyperion scene (16 April 2011) over the Noamundi iron-ore mine in Jharkhand, India, and ask a simple question: does the ferric-iron absorption near 900 nm show up where the mine is? I then ask what such a measure can do for a regulator, whose check on the mine's land use rests on maps the operator prepares, and what the measured footprint is worth at the state's own forest price.
 
 ![poster](outputs/rust_signature_poster.png)
 
@@ -46,8 +46,8 @@ I run the whole analysis with one command, `python run_all.py`, on the exported 
 
 ## Policy context: a monitoring condition
 
-- **The clearance asks for this measurement.** The mine's environmental clearance of 10 June 2013 (J-11015/104/2011-IA.II(M), specific condition 33) requires "digital processing of the entire lease area using remote sensing technique" once in three years. The clearance of 6 September 2021 asks for a land use and land cover map of the lease once in five years. In the operator's compliance report for October 2025 to March 2026, the reply is that a private agency prepares the map; no dates, resolution or results are given.
-- **A record the regulated firm produces.** The lease covers 1,160.06 ha, of which 762.42 ha is forest land (same report). The map that shows whether this land is worked and reclaimed as approved is commissioned by the operator and summarised in its own report. That is self-reported compliance, and the regulator has to verify what the firm reports.
+- **The clearance asks for this measurement.** The mine's environmental clearance of 10 June 2013 (J-11015/104/2011-IA.II(M), specific condition 33) requires "digital processing of the entire lease area using remote sensing technique" once in three years. The clearance of 6 September 2021 asks for a land use and land cover map of the lease once in five years. The operator has to prepare these maps. In its compliance report for October 2025 to March 2026, the reply names the private agency that makes them and encloses the map as an annexure; the reply itself states no imagery date or resolution.
+- **A record the regulated firm produces.** The lease covers 1,160.06 ha, of which 762.42 ha is forest land (same report). The map that shows whether this land is worked and reclaimed as approved is prepared by the operator and reported in its own compliance report. That is self-reported compliance, and the regulator has to verify what the firm reports.
 - **What a public check adds.** Free archive imagery, code anyone can rerun, and a benchmark taken from the regulator's own inspection report. This study shows that such a check can confirm where the ground is open. At 30 m it cannot say which pit is active, or whether a dump has been reclaimed to the standard the closure plan sets.
 - **A baseline before the condition.** The scene is from April 2011, two years before the 2013 condition. The same measure on a recent image would turn a footprint into a change, which is what a monitoring condition is meant to track.
 
